@@ -66,9 +66,9 @@ class SessionInfo:
 
     unified_msg_origin: str
     platform: str
-    platform_name: str = ""  # MaiBot 识别的平台类型名（如 aiocqhttp）
     message_type: str
     session_id: str
+    platform_name: str = ""  # MaiBot 识别的平台类型名（如 aiocqhttp）
     # 弱引用到原始事件，仅在需要时用于发送消息
     # 使用 object 类型避免循环导入问题
     _event_ref: object = field(default=None, repr=False)
@@ -418,9 +418,29 @@ class MaiBotHijackPlugin(Star):
         import astrbot.core.message.components as Comp
 
         components = parse_segment_to_components(segment)
+        if not components:
+            return
+        
+        # 按组件类型分组，提高消息发送效率
+        plain_texts = []
+        other_components = []
+        
         for comp in components:
             if isinstance(comp, Comp.Plain):
-                yield event.plain_result(comp.text)
-            elif isinstance(comp, Comp.Image):
-                # Image 组件直接构造 chain_result
+                plain_texts.append(comp.text)
+            else:
+                other_components.append(comp)
+        
+        # 先发送所有纯文本内容
+        if plain_texts:
+            yield event.plain_result("".join(plain_texts))
+        
+        # 再发送其他类型组件
+        for comp in other_components:
+            if isinstance(comp, Comp.Image):
                 yield event.chain_result([comp])
+            else:
+                # 对于未知组件类型，尝试转换为文本
+                text = str(comp) if comp else ""
+                if text:
+                    yield event.plain_result(text)

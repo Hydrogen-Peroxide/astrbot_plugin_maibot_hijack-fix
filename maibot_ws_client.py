@@ -196,19 +196,17 @@ class _PlatformChannel:
 
     async def close(self) -> None:
         """关闭连接并取消后台任务。"""
+        if not self._connected and self._ws is None:
+            return
+        
         self._connected = False
         # 取消所有后台任务（包括监听、心跳和 dispatch 创建的任务）
         await self._cancel_background_tasks()
 
-        for task in (self._keepalive_task, self._listener_task):
-            if task and not task.done():
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
+        # 显式清理监听和心跳任务引用（已在 _cancel_background_tasks 中处理）
         self._keepalive_task = None
         self._listener_task = None
+        
         if self._ws:
             try:
                 await self._ws.close()

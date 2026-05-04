@@ -375,12 +375,21 @@ class MaiBotAgentRunner(BaseAgentRunner[TContext]):
             if ctx:
                 event = getattr(ctx, "event", None)
                 if event:
+                    sender_id = getattr(event, "sender_id", None)
+                    nickname = getattr(event, "nickname", None)
+                    
+                    # 尝试从 event 对象获取更多属性
+                    if sender_id is None:
+                        sender_id = getattr(event, "get_sender_id", lambda: None)()
+                    if nickname is None:
+                        nickname = getattr(event, "get_sender_name", lambda: None)()
+                    
                     return (
-                        str(getattr(event, "sender_id", "") or ""),
-                        str(getattr(event, "nickname", "") or ""),
+                        str(sender_id) if sender_id else "",
+                        str(nickname) if nickname else "",
                     )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"[MaiBot] 提取发送者信息失败: {e}")
         return "", ""
 
     async def close(self) -> None:

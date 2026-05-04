@@ -1,1 +1,2 @@
 maim_message>=0.3.0
+websockets>=12.0
